@@ -1,0 +1,18 @@
+%% Write nest for loop to call out the function with increament of t2 [0,360]
+% -------- Written by Vinh -------
+clc;clear;
+Amax = 360; % maximum degree
+Amin = 0;
+Array = zeros(2,Amax);
+for i = 1:1:Amax
+    Array(1,i) = i;
+    Array(2,i) = torque_produce(i);
+    x(i) = Array(1,i);
+    y(i) = Array(2,i);
+
+end
+
+
+plot(x,y);
+xlabel('02 (degree)');
+ylabel('Q (N-cm)')
