@@ -1,0 +1,93 @@
+% Matlab plot of input torque vs crank angle theta 2
+% Define link length in (Cm)
+% -------------Written by Vinh--------
+function Q = torque_produce(theta2) % require input from theta2
+r2 = 12; %theta2 = input(); 
+t2 = deg2rad(theta2);  o2 = 5; a2 = 4; %angular velo and accleration
+r3 = 32; theta7 = 270; t7 = deg2rad(theta7); % theta 7 is fixed angle of 270*
+r4 = 74;
+r6 = 50; theta6 = 0; t6 = deg2rad(theta6);
+r5 = 147;
+r8 = 50; theta8 = 0; t8 = deg2rad(theta8);
+r9 = 60; theta9 = 90; t9 = deg2rad(theta9);
+% write close loop equation to solve the t3, t4, t5 and r7 with input (T2)
+eqn1 = @(t) [ r2*cos(t2) + r3*cos(t(1)) + r4*cos(t(2)) + r8*cos(t8) - r9*cos(t9);
+              r2*sin(t2) + r3*sin(t(1)) + r4*sin(t(2)) + r8*sin(t8) - r9*sin(t9)];
+t = fsolve (eqn1,[-1 0]); % to limit the output need to define in range of [-180,180]
+theta3 = rad2deg(t(1,1)); t3 = t(1,1); % careful to retain t3 to have value in radians.
+theta4 = rad2deg(t(1,2)); t4 = t(1,2);
+
+eqn2 = @(x) [ r2*cos(t2) + r3*cos(t3) + r5*cos(x(1)) + r6*cos(t6) - x(2)*cos(t7);
+              r2*sin(t2) + r3*sin(t3) + r5*sin(x(1)) + r6*sin(t6) - x(2)*sin(t7)] ;
+x = fsolve(eqn2,[[0], 100]);
+theta5 = rad2deg(x(1,1))  
+t5 = x(1,1);
+r7 = x(1,2);
+
+% Finding coefficient of h3 and h4 based on closed loop equations
+A34 = [-r3*sin(t3) -r4*sin(t4)
+        r3*cos(t3)  r4*cos(t4)];
+B34 = [r2*sin(t2) ; -r2*cos(t2)];
+H3 = inv(A34) * B34;
+[h3] = H3(1,1)  ;  % h3
+[h4] = H3(2,1)  ;     % h4 
+
+% Coefficient of h3' and h4'
+A34_2 = [-r3*sin(t3) -r4*sin(t4)
+        r3*cos(t3)  r4*cos(t4)];
+B34_2 = [r2*cos(t2) + r3*cos(t3)*(h3^2) + r4*cos(t4)*(h4^2)
+         r2*sin(t2) + r3*sin(t3)*(h3^2) + r4*sin(t4)*(h4^2)];
+H3_2 = inv(A34_2) * B34_2;
+[h3_2] = H3_2(1,1)  ;  % h3'
+[h4_2] = H3_2(2,1)  ;   % h4'
+
+% Find h5 and f7 
+A57 = [-r5*sin(t5) -cos(t7)
+        r5*cos(t5) -sin(t7)];
+B57 = [r2*sin(t2) + r3*sin(t3)*(h3)
+      -r2*cos(t2) - r3*cos(t3)*(h3)];
+H5 = inv(A57) * B57;
+[h5] = H5(1,1) ;    % h5
+[f7] = H5(2,1) ;     % f7
+
+% Find h5' and f7'
+A57_2 = [-r5*sin(t5) -cos(t7)
+         r5*cos(t5) -sin(t7)];
+B57_2 = [r2*cos(t2) + r3*cos(t3)*(h3^2) + r3*sin(t3)*(h3_2) + r5*cos(t5)*(h5^2)
+         r2*sin(t2) + r3*sin(t3)*(h3^2) - r3*cos(t3)*(h3_2) + r5*sin(t5)*(h5^2)] ; 
+H5_2 = inv(A57_2) * B57_2;
+[h5_2] = H5_2(1,1);    % h5' 
+[f7_2] = H5_2(2,1);   % f7'
+
+% Derive ram acceleration. Since the ram motion is the same as the 
+% rate of change of link r7 ,therefore take r7 parameter do calculate
+r7_velocity = -f7*(o2);
+r7_acceleration = - (f7*a2 + f7_2*((o2)^2));
+
+% Matrix manipulation
+m6 = 15;             % mass of ram is 15 kg
+ag6y = r7_acceleration;
+g = 981;            % earth gravity constant convert to cm/s^2
+A1 = [1	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0
+0	1  0	1	0	0	0	0	0	0	0	0	0	0	0	0
+0	0	-r2*sin(t2)	r2*cos(t2)	0	0	0	0	0	0	0	0	0	0	0	1
+0	0	0	0	1	0	-1	0	1	0	0	0	0	0	0	0
+0	0	0	0	0	1	0	-1	0	1	0	0	0	0	0	0
+0	0	0	0	0	0	-1	0	-1	0	0	0	1	0	0	0
+0	0	0	0	0	0	0	-1	0	-1	0	0	0	1	0	0
+0	0	0	0	0	0	0	0	0	0	0	0	-r5*sin(t5)	r5*cos(t5)	0	0
+0	0	-1	0	1	0	1	0	0	0	0	0	0	0	0	0
+0	0	0	-1	0	1	0	1	0	0	0	0	0	0	0	0
+0	0	-r3*sin(t3) r3*cos(t3)	0	0	0	0	0	0	0	0	0	0	0	0
+0	0	0	0	-1	0	0	0	1	0	1	0	0	0	0	0
+0	0	0	0	0	-1	0	0	0	1	0	1	0	0	0	0
+0	0	0	0	0	0	0	0	0	0	-r4*sin(t4)	 r4*cos(t4)	0	0	0	0
+0	0	0	0	0	0	0	0	0	0	0	0	-1	0	1	0
+0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0] ;
+
+C1 = zeros(16,1);
+C1(16,1) =     -(m6*ag6y + m6*g);         % Assign value to RHS matrix
+B = inv(A1) * C1;
+Q = B(16,1)
+disp(['Torque =  ',num2str(Q)]); % Displat out the input Torque with given T2
+end
